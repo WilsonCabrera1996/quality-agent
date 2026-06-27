@@ -1,0 +1,111 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '4.1.0'
+    id 'io.spring.dependency-management' version '1.1.7'
+    id 'org.openapi.generator' version '7.10.0'
+    id 'jacoco'
+}
+
+group = 'com.example'
+version = '0.0.1-SNAPSHOT'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.7.0'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.boot:spring-boot-test'
+    testImplementation 'org.springframework.boot:spring-boot-test-autoconfigure'
+    testImplementation 'io.cucumber:cucumber-java:7.20.1'
+    testImplementation 'io.cucumber:cucumber-spring:7.20.1'
+    testImplementation 'io.cucumber:cucumber-junit-platform-engine:7.20.1'
+    testImplementation 'org.junit.platform:junit-platform-suite'
+
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+    finalizedBy jacocoTestReport
+}
+
+// Configuración de OpenAPI Generator
+openApiGenerate {
+    generatorName = "spring"
+    inputSpec = "$projectDir/src/main/resources/api/openapi.yaml".toString()
+    outputDir = "$buildDir/generated-sources".toString()
+    apiPackage = "com.example.demo.infrastructure.api"
+    modelPackage = "com.example.demo.infrastructure.api.model"
+    configOptions = [
+        interfaceOnly: "true",
+        useSpringBoot3: "true",
+        useTags: "true",
+        openApiNullable: "false",
+        generateSupportingFiles: "false"
+    ]
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs += ["$buildDir/generated-sources/src/main/java"]
+        }
+    }
+}
+
+compileJava.dependsOn tasks.openApiGenerate
+
+// Configuración de JaCoCo
+jacoco {
+    toolVersion = "0.8.12"
+}
+
+jacocoTestReport {
+    dependsOn test
+    reports {
+        xml.required = true
+        html.required = true
+    }
+    afterEvaluate {
+        classDirectories.setFrom(files(classDirectories.files.collect {
+            fileTree(dir: it, exclude: [
+                "com/example/demo/infrastructure/api/**",
+                "com/example/demo/infrastructure/api/model/**",
+                "com/example/demo/DemoApplication**",
+                "**/ApiUtil**"
+            ])
+        }))
+    }
+}
+
+tasks.register('verifyCoverage', JacocoCoverageVerification) {
+    dependsOn jacocoTestReport
+    violationRules {
+        rule {
+            element = 'BUNDLE'
+            limit {
+                counter = 'INSTRUCTION'
+                value = 'COVEREDRATIO'
+                minimum = 0.80
+            }
+        }
+    }
+    // Usar las clases ya filtradas del reporte
+    classDirectories.setFrom(jacocoTestReport.classDirectories)
+}
+
+check.dependsOn verifyCoverage
+// Desactivar la verificación estándar que falla por el código generado
+jacocoTestCoverageVerification.enabled = false

@@ -1,0 +1,73 @@
+openapi: 3.0.3
+info:
+  title: API de Reserva de Citas - US-01
+  description: API para la gestión de reservas de citas médicas en línea 24/7.
+  version: 1.0.0
+paths:
+  /appointments:
+    post:
+      summary: Reservar una nueva cita
+      operationId: createAppointment
+      tags:
+        - Appointments
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppointmentRequest'
+      responses:
+        '201':
+          description: Cita creada exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppointmentResponse'
+        '400':
+          description: Datos inválidos o franja horaria no disponible
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    AppointmentRequest:
+      type: object
+      required:
+        - patientId
+        - doctorId
+        - dateTime
+      properties:
+        patientId:
+          type: string
+          format: uuid
+        doctorId:
+          type: string
+          format: uuid
+        dateTime:
+          type: string
+          format: date-time
+    AppointmentResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        patientId:
+          type: string
+        doctorId:
+          type: string
+        dateTime:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [CONFIRMED, CANCELLED, PENDING]
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
